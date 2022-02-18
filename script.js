@@ -1,89 +1,103 @@
-const myImage = new Image();
-myImage.src = 'image2.png';
+const canvas = document.getElementById('canvas1');
+const ctx = canvas.getContext('2d');
 
-myImage.addEventListener('load', function(){
-    const canvas = document.getElementById('canvas1');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 750;
-    canvas.height = 750;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-    ctx.drawImage(myImage, 0, 0, canvas.width, canvas.height);
-    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+let particleArray = [];
 
-    let particlesArray = [];
-    const numberOfParticles = 25000;
+// handles mouse interactions
+const mouse = {
+    x: null,
+    y: null,
+    radius: 100
+}
 
-    /* Creates brightness map for image */
-    let mappedImage = [];
-    for (let y = 0; y < canvas.height; y++){
-        let row = [];
-        for (let x = 0; x < canvas.width; x++){
-            const red = pixels.data[(y * 4 * pixels.width) + (x * 4)];
-            const green = pixels.data[(y * 4 * pixels.width) + (x * 4 + 1)];
-            const blue = pixels.data[(y * 4 * pixels.width) + (x * 4 + 2)];
-            const brightness = calculateRelativeBrightness(red, green, blue);
-            const cell = [
-                cellBrightness = brightness
-            ];
-            row.push(cell);
-        }
-        mappedImage.push(row);
+window.addEventListener('mousemove', function(event){
+    mouse.x = event.x;
+    mouse.y = event.y;
+});
+
+ctx.fillStyle = 'white';
+ctx.font = '30px Verdana';
+ctx.fillText('Test', window.innerWidth/2, window.innerHeight/2);
+ctx.strokeStyle = 'white';
+ctx.strokeRect(window.innerWidth/2-5, window.innerHeight/2-30, 82, 40)
+
+const textCoordinates = ctx.getImageData(window.innerWidth/2-5, window.innerHeight/2-30, 82, 40)
+
+class Particle { 
+    constructor(x, y){
+        this.x = x;
+        this.y = y;
+        this.size = 3;
+        this.baseX = this.x;
+        this.baseY = this.y;
+        this.density = (Math.random() * 30) + 1;
     }
-
-    /* Formula best suited for human brightness perception */
-    function calculateRelativeBrightness(red, green, blue){
-        return Math.sqrt(
-            (red * red) * 0.299 +
-            (green * green) * 0.587 +
-            (blue * blue) * 0.114
-        )/100;
+    draw(){
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fill();
     }
+    update(){
+        let dx = mouse.x - this.x;
+        let dy = mouse.y - this.y;
+        let distance = Math.hypot(dx, dy);
 
-    class Particle {
-        constructor(){
-            this.x = Math.random() * canvas.width;
-            this.y = 0;
-            this.speed = 0;
-            this.velocity = Math.random() * 1;
-            this.size = Math.random() * 1.5 + 1;
-            this.position1 = Math.floor(this.y);
-            this.position2 = Math.floor(this.x);
-        }
-        update(){
-            this.position1 = Math.floor(this.y);
-            this.position2 = Math.floor(this.x);
-            this.speed = mappedImage[this.position1][this.position2][0];
-            let movement = (2.5 - this.speed) + this.velocity;
-            
-            this.y += movement;
-            if (this.y >= canvas.height){
-                this.y = 0;
-                this.x = Math.random() * canvas.width;
+        let forceDirectionX = dx / distance;
+        let forceDirectionY = dy / distance;
+
+        let maxDistance = mouse.radius;
+        let force = (maxDistance - distance) / maxDistance;
+
+        let directionX = forceDirectionX * force * this.density;
+        let directionY = forceDirectionY * force * this.density;
+
+        if (distance < mouse.radius){
+            this.x -= directionX;
+            this.y -= directionY;
+        } else {
+            if (this.x !== this.baseX){
+                let dx = this.x - this.baseX;
+                this.x -= dx/10;
+            }
+            if (this.y !== this.baseY){
+                let dy = this.y - this.baseY;
+                this.y -= dy/5;
             }
         }
-        draw(){
-            ctx.beginPath();
-            ctx.fillStyle = 'cyan';
-            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-            ctx.fill();
+        
+    }
+}
+
+function init() {
+    /* Random Particle Loc Array
+    particleArray = [];
+    for (let i = 0; i < 500; i++){
+        let x = Math.random() * canvas.width;
+        let y = Math.random() * canvas.height;
+        particleArray.push(new Particle(x, y))
+    } */
+    particleArray = [];
+    for (let y = 0, y2 = textCoordinates.height; y < y2; y++){
+        for (let x = 0, x2 = textCoordinates.width; x < x2; x++){
+            if (textCoordinates.data[1] > 128) {
+
+            }
         }
     }
-    function init(){
-        for (let i = 0; i < numberOfParticles; i++){
-            particlesArray.push(new Particle);
-        }
+}
+init();
+
+function animate(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particleArray.length; i++){
+        particleArray[i].draw();
+        particleArray[i].update();
     }
-    init();
-    function animate(){
-        /*ctx.drawImage(myImage, 0, 0, canvas.width, canvas.height);*/
-        ctx.globalAlpha = 0.1;
-        ctx.fillStyle = 'rgb(0, 0, 0)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < particlesArray.length; i++){
-            particlesArray[i].update();
-            particlesArray[i].draw();
-        }
-        requestAnimationFrame(animate);
-    }
-    animate()
-})
+    requestAnimationFrame(animate);
+}
+animate();
